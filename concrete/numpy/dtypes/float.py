@@ -28,3 +28,6 @@ class Float(BaseDataType):
 
     def __str__(self) -> str:
         return f"float{self.bit_width}"
+
+    def __hash__(self) -> int:
+        return hash((self.bit_width))

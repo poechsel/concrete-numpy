@@ -109,6 +109,9 @@ class Integer(BaseDataType):
     def __str__(self) -> str:
         return f"{('int' if self.is_signed else 'uint')}{self.bit_width}"
 
+    def __hash__(self) -> int:
+        return hash((self.is_signed, self.bit_width))
+
     def min(self) -> int:
         """
         Get the minumum value that can be represented by the `Integer`.

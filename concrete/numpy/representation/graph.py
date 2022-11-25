@@ -11,6 +11,7 @@ import numpy as np
 from ..dtypes import Float, Integer, UnsignedInteger
 from .node import Node
 from .operation import Operation
+from .utils import assert_that
 
 
 class Graph:
@@ -364,6 +365,27 @@ class Graph:
             idx_to_pred.update((data["input_idx"], pred) for data in edge_data.values())
         return [idx_to_pred[i] for i in range(len(idx_to_pred))]
 
+    def ordered_succs_of(self, node: Node) -> List[Node]:
+        """
+        Get successors of `node`, ordered by their indices.
+
+        Args:
+            node (Node):
+                node whose predecessors are requested
+
+        Returns:
+            List[Node]:
+                ordered predecessors of `node`.
+        """
+
+        idx_to_pred: Dict[int, Node] = {}
+        for pred in self.graph.neighbors(node):
+            print("@", pred, node)
+            edge_data = self.graph.get_edge_data(pred, node)
+            print(edge_data)
+            idx_to_pred.update((data["input_idx"], pred) for data in edge_data.values())
+        return [idx_to_pred[i] for i in range(len(idx_to_pred))]
+
     def prune_useless_nodes(self):
         """
         Remove unreachable nodes from the graph.
@@ -398,3 +420,51 @@ class Graph:
             if isinstance(node.output.dtype, Integer):
                 result = max(result, node.output.dtype.bit_width)
         return result
+
+    def expand_node(self, node: Node, sub_graph: "Graph"):
+        assert len(sub_graph.output_nodes) == 1
+        assert len(sub_graph.input_nodes) == len(node.inputs)
+        print(sub_graph.output_nodes[0].output.dtype, node.output.dtype)
+        # assert sub_graph.output_nodes[0].output.dtype == node.output.dtype
+
+        for k in sub_graph.input_nodes:
+            assert sub_graph.input_nodes[k].operation == Operation.Input
+            print(
+                " / ".join(str(v.dtype) for v in sub_graph.input_nodes[k].inputs),
+                " / ".join(str(v.dtype) for v in node.inputs),
+            )
+
+        preds = list(self.ordered_preds_of(node))
+        succs = list(self.ordered_succs_of(node))
+
+        composed = nx.compose(self.graph, sub_graph.graph)
+        for input_key in sub_graph.input_nodes:
+            input_node_in_sub_graph = sub_graph.input_nodes[input_key]
+            succs_sub_graph = list(sub_graph.graph.neighbors(input_node_in_sub_graph))
+
+            for succ in succs_sub_graph:
+                edge_data = sub_graph.graph.get_edge_data(input_node_in_sub_graph, succ)
+
+                for data in edge_data.values():
+                    composed.add_edge(preds[input_key], succ, input_idx=data["input_idx"])
+
+        for succ in succs:
+            edge_data = self.graph.get_edge_data(node, succ)
+            for d in edge_data:
+                composed.add_edge(
+                    sub_graph.output_nodes[0],
+                    succ,
+                    input_idx=data["input_idx"],
+                )
+
+        for k, v in self.output_nodes.items():
+            if v == node:
+                self.output_nodes[k] = sub_graph.output_nodes[0]
+        for k, v in self.input_nodes.items():
+            for v_sub_graph in sub_graph.input_nodes.values():
+                if v == v_sub_graph:
+                    self.output_nodes[k] = v_sub_graph
+
+        composed.remove_node(node)
+        self.graph = composed
+        self.prune_useless_nodes()

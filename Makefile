@@ -84,12 +84,9 @@ pcc_internal: $(PCC_DEPS)
 # pytest-randomly
 .PHONY: pytest # Run pytest
 pytest:
-	poetry run pytest -svv \
-	--global-coverage=.global-coverage.json \
-	-n $$(./script/make_utils/ncpus.sh) \
-	--cov=$(SRC_DIR) --cov-fail-under=100 \
-	--randomly-dont-reorganize \
-	--cov-report=term-missing:skip-covered tests/
+	poetry run pytest -s  \
+	 tests/execution/test_comparisons.py
+	 #tests/execution/test_iter.py 
 
 # Not a huge fan of ignoring missing imports, but some packages do not have typing stubs
 .PHONY: mypy # Run mypy

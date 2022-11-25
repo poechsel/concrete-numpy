@@ -55,6 +55,8 @@ class Tracer:
         signature = inspect.signature(function)
 
         missing_args = list(signature.parameters)
+        print(signature)
+        print(missing_args)
         for arg in parameters.keys():
             missing_args.remove(arg)
         assert_that(len(missing_args) == 0)
@@ -64,6 +66,8 @@ class Tracer:
 
         for index, param in enumerate(signature.parameters.keys()):
             node = Node.input(param, parameters[param])
+            print("tracer from trace")
+            print(node, param, parameters[param])
             arguments[param] = Tracer(node, [])
             input_indices[node] = index
 
@@ -152,6 +156,7 @@ class Tracer:
     def __init__(self, computation: Node, input_tracers: List["Tracer"]):
         self.computation = computation
         self.input_tracers = input_tracers
+        print("output", computation.output)
         self.output = computation.output
 
         for i, tracer in enumerate(self.input_tracers):
@@ -329,7 +334,8 @@ class Tracer:
             Tracer:
                 tracer representing the arbitrary computation
         """
-
+        print(operation)
+        print(args)
         if operation not in Tracer.SUPPORTED_NUMPY_OPERATORS:
             raise RuntimeError(f"Function 'np.{operation.__name__}' is not supported")
 
@@ -351,7 +357,7 @@ class Tracer:
         def sampler(arg: Any) -> Any:
             if isinstance(arg, tuple):
                 return tuple(sampler(item) for item in arg)
-
+            print("error", arg.output)
             output = arg.output
             assert_that(isinstance(output.dtype, (Float, Integer)))
 
@@ -590,6 +596,7 @@ class Tracer:
             evaluator,
             kwargs={"dtype": normalized_dtype.type},
         )
+        print("trace from astype")
         return Tracer(computation, [self])
 
     def clip(self, minimum: Any, maximum: Any) -> "Tracer":
@@ -681,6 +688,7 @@ class Tracer:
             lambda x, index: x[index],
             kwargs={"index": index},
         )
+        print("trace from getitem")
         return Tracer(computation, [self])
 
     def __setitem__(
@@ -730,6 +738,7 @@ class Tracer:
             assign,
             kwargs={"index": index},
         )
+        print("tracer from setitem")
         new_version = Tracer(computation, [self, sanitized_value])
 
         self.last_version = new_version

@@ -23,11 +23,14 @@ from mlir.ir import (
     RankedTensorType,
 )
 
-from ..dtypes import Integer, SignedInteger
+from ..dtypes import Integer, SignedInteger, UnsignedInteger
+from ..extensions.table import LookupTable
 from ..internal.utils import assert_that
 from ..representation import Graph, Node, Operation
-from ..values import ClearScalar, EncryptedScalar
+from ..tracing.tracer import Tracer
+from ..values import ClearScalar, EncryptedScalar, EncryptedTensor
 from .node_converter import NodeConverter
+from .node_rewriter import rewrite_all_binops
 from .utils import MAXIMUM_TLU_BIT_WIDTH
 
 # pylint: enable=no-member,no-name-in-module
@@ -580,7 +583,8 @@ class GraphConverter:
         """
 
         graph = deepcopy(graph)
-
+        rewrite_all_binops(graph)
+        print(graph.format())
         GraphConverter._check_graph_convertibility(graph)
         if virtual:
             return "Virtual circuits don't have MLIR."

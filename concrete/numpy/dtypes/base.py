@@ -15,3 +15,7 @@ class BaseDataType(ABC):
     @abstractmethod
     def __str__(self) -> str:
         pass  # pragma: no cover
+
+    @abstractmethod
+    def __hash__(self) -> str:
+        pass  # pragma: no cover
