@@ -55,8 +55,6 @@ class Tracer:
         signature = inspect.signature(function)
 
         missing_args = list(signature.parameters)
-        print(signature)
-        print(missing_args)
         for arg in parameters.keys():
             missing_args.remove(arg)
         assert_that(len(missing_args) == 0)
@@ -66,8 +64,6 @@ class Tracer:
 
         for index, param in enumerate(signature.parameters.keys()):
             node = Node.input(param, parameters[param])
-            print("tracer from trace")
-            print(node, param, parameters[param])
             arguments[param] = Tracer(node, [])
             input_indices[node] = index
 
@@ -80,7 +76,10 @@ class Tracer:
 
         output_tracer_list = list(output_tracers)
         for i, output_tracer in enumerate(output_tracer_list):
-            if isinstance(output_tracer, Tracer) and output_tracer.last_version is not None:
+            if (
+                isinstance(output_tracer, Tracer)
+                and output_tracer.last_version is not None
+            ):
                 output_tracer_list[i] = output_tracer.last_version
         output_tracers = tuple(output_tracer_list)
 
@@ -101,7 +100,9 @@ class Tracer:
 
         output_tracers = tuple(sanitized_tracers)
 
-        def create_graph_from_output_tracers(output_tracers: Tuple[Tracer, ...]) -> nx.MultiDiGraph:
+        def create_graph_from_output_tracers(
+            output_tracers: Tuple[Tracer, ...]
+        ) -> nx.MultiDiGraph:
             graph = nx.MultiDiGraph()
 
             visited_tracers: Set[Tracer] = set()
@@ -148,7 +149,8 @@ class Tracer:
             if len(graph.pred[node]) == 0 and node.operation == Operation.Input
         }
         output_nodes = {
-            output_idx: tracer.computation for output_idx, tracer in enumerate(output_tracers)
+            output_idx: tracer.computation
+            for output_idx, tracer in enumerate(output_tracers)
         }
 
         return Graph(graph, input_nodes, output_nodes)
@@ -156,11 +158,12 @@ class Tracer:
     def __init__(self, computation: Node, input_tracers: List["Tracer"]):
         self.computation = computation
         self.input_tracers = input_tracers
-        print("output", computation.output)
         self.output = computation.output
 
         for i, tracer in enumerate(self.input_tracers):
-            self.input_tracers[i] = tracer if tracer.last_version is None else tracer.last_version
+            self.input_tracers[i] = (
+                tracer if tracer.last_version is None else tracer.last_version
+            )
 
     def __hash__(self) -> int:
         return id(self)
@@ -334,8 +337,6 @@ class Tracer:
             Tracer:
                 tracer representing the arbitrary computation
         """
-        print(operation)
-        print(args)
         if operation not in Tracer.SUPPORTED_NUMPY_OPERATORS:
             raise RuntimeError(f"Function 'np.{operation.__name__}' is not supported")
 
@@ -357,14 +358,15 @@ class Tracer:
         def sampler(arg: Any) -> Any:
             if isinstance(arg, tuple):
                 return tuple(sampler(item) for item in arg)
-            print("error", arg.output)
             output = arg.output
             assert_that(isinstance(output.dtype, (Float, Integer)))
 
             dtype: Any = np.int64
             if isinstance(output.dtype, Float):
                 assert_that(output.dtype.bit_width in [16, 32, 64])
-                dtype = {64: np.float64, 32: np.float32, 16: np.float16}[output.dtype.bit_width]
+                dtype = {64: np.float64, 32: np.float32, 16: np.float16}[
+                    output.dtype.bit_width
+                ]
 
             if output.shape == ():
                 return dtype(1)
@@ -387,7 +389,9 @@ class Tracer:
             extract_tracers(arg, tracers)
 
         output_value = Value.of(evaluation)
-        output_value.is_encrypted = any(tracer.output.is_encrypted for tracer in tracers)
+        output_value.is_encrypted = any(
+            tracer.output.is_encrypted for tracer in tracers
+        )
 
         computation = Node.generic(
             operation.__name__,
@@ -460,10 +464,14 @@ class Tracer:
         return Tracer._trace_numpy_operation(np.true_divide, self.sanitize(other), self)
 
     def __floordiv__(self, other: Any) -> "Tracer":
-        return Tracer._trace_numpy_operation(np.floor_divide, self, self.sanitize(other))
+        return Tracer._trace_numpy_operation(
+            np.floor_divide, self, self.sanitize(other)
+        )
 
     def __rfloordiv__(self, other: Any) -> "Tracer":
-        return Tracer._trace_numpy_operation(np.floor_divide, self.sanitize(other), self)
+        return Tracer._trace_numpy_operation(
+            np.floor_divide, self.sanitize(other), self
+        )
 
     def __pow__(self, other: Any) -> "Tracer":
         return Tracer._trace_numpy_operation(np.power, self, self.sanitize(other))
@@ -535,7 +543,9 @@ class Tracer:
         return Tracer._trace_numpy_operation(np.greater, self, self.sanitize(other))
 
     def __ge__(self, other: Any) -> "Tracer":  # type: ignore
-        return Tracer._trace_numpy_operation(np.greater_equal, self, self.sanitize(other))
+        return Tracer._trace_numpy_operation(
+            np.greater_equal, self, self.sanitize(other)
+        )
 
     def __lt__(self, other: Any) -> "Tracer":  # type: ignore
         return Tracer._trace_numpy_operation(np.less, self, self.sanitize(other))
@@ -579,9 +589,13 @@ class Tracer:
 
             def evaluator(x, dtype):
                 if np.any(np.isnan(x)):
-                    raise ValueError("A `NaN` value is tried to be converted to integer")
+                    raise ValueError(
+                        "A `NaN` value is tried to be converted to integer"
+                    )
                 if np.any(np.isinf(x)):
-                    raise ValueError("An `Inf` value is tried to be converted to integer")
+                    raise ValueError(
+                        "An `Inf` value is tried to be converted to integer"
+                    )
                 return x.astype(dtype)
 
         else:
@@ -596,7 +610,6 @@ class Tracer:
             evaluator,
             kwargs={"dtype": normalized_dtype.type},
         )
-        print("trace from astype")
         return Tracer(computation, [self])
 
     def clip(self, minimum: Any, maximum: Any) -> "Tracer":
@@ -620,7 +633,9 @@ class Tracer:
         Trace numpy.ndarray.flatten().
         """
 
-        return Tracer._trace_numpy_operation(np.reshape, self, newshape=(self.output.size,))
+        return Tracer._trace_numpy_operation(
+            np.reshape, self, newshape=(self.output.size,)
+        )
 
     def reshape(self, newshape: Tuple[Any, ...]) -> "Tracer":
         """
@@ -688,7 +703,6 @@ class Tracer:
             lambda x, index: x[index],
             kwargs={"index": index},
         )
-        print("trace from getitem")
         return Tracer(computation, [self])
 
     def __setitem__(
@@ -738,7 +752,6 @@ class Tracer:
             assign,
             kwargs={"index": index},
         )
-        print("tracer from setitem")
         new_version = Tracer(computation, [self, sanitized_value])
 
         self.last_version = new_version

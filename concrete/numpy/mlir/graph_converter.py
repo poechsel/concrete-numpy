@@ -127,7 +127,9 @@ class GraphConverter:
             elif name == "multiply":
                 assert_that(len(inputs) == 2)
                 if inputs[0].is_encrypted and inputs[1].is_encrypted:
-                    return "only multiplication between encrypted and clear is supported"
+                    return (
+                        "only multiplication between encrypted and clear is supported"
+                    )
 
             elif name == "negative":
                 assert_that(len(inputs) == 1)
@@ -333,7 +335,10 @@ class GraphConverter:
 
         nx_graph = graph.graph
         for node in list(nx_graph.nodes):
-            if node.operation == Operation.Generic and node.properties["name"] == "assign.static":
+            if (
+                node.operation == Operation.Generic
+                and node.properties["name"] == "assign.static"
+            ):
                 shape = node.inputs[0].shape
                 index = node.properties["kwargs"]["index"]
 
@@ -361,7 +366,9 @@ class GraphConverter:
                     modified_value.shape = required_value_shape
 
                     try:
-                        np.broadcast_to(np.zeros(actual_value_shape), required_value_shape)
+                        np.broadcast_to(
+                            np.zeros(actual_value_shape), required_value_shape
+                        )
                         modified_value.is_encrypted = True
                         modified_value.dtype = node.output.dtype
                         modified_pred = Node.generic(
@@ -400,7 +407,10 @@ class GraphConverter:
 
         nx_graph = graph.graph
         for node in list(nx_graph.nodes):
-            if node.operation == Operation.Generic and node.properties["name"] == "assign.static":
+            if (
+                node.operation == Operation.Generic
+                and node.properties["name"] == "assign.static"
+            ):
                 assigned_value = node.inputs[1]
                 if assigned_value.is_clear:
                     preds = graph.ordered_preds_of(node)
@@ -449,7 +459,10 @@ class GraphConverter:
 
         nx_graph = graph.graph
         for node in list(nx_graph.nodes):
-            if node.operation == Operation.Generic and node.properties["name"] in OPS_TO_TENSORIZE:
+            if (
+                node.operation == Operation.Generic
+                and node.properties["name"] in OPS_TO_TENSORIZE
+            ):
                 assert len(node.inputs) in {1, 2}
 
                 if len(node.inputs) == 2:
@@ -489,10 +502,14 @@ class GraphConverter:
                 assert tensorized_pred is not None
 
                 nx_graph.remove_edge(pred_to_tensorize, node)
-                nx_graph.add_edge(tensorized_pred, node, input_idx=pred_to_tensorize_index)
+                nx_graph.add_edge(
+                    tensorized_pred, node, input_idx=pred_to_tensorize_index
+                )
 
     @staticmethod
-    def _sanitize_signed_inputs(graph: Graph, args: List[Any], ctx: Context) -> List[Any]:
+    def _sanitize_signed_inputs(
+        graph: Graph, args: List[Any], ctx: Context
+    ) -> List[Any]:
         """
         Apply table lookup to signed inputs in the beginning of evaluation to sanitize them.
 
@@ -541,11 +558,13 @@ class GraphConverter:
                 assert_that(input_value.is_encrypted)
 
                 n = input_dtype.bit_width
-                lut_range = np.arange(2**n)
+                lut_range = np.arange(2 ** n)
 
-                lut_values = np.where(lut_range < (2 ** (n - 1)), lut_range, lut_range - (2**n))
+                lut_values = np.where(
+                    lut_range < (2 ** (n - 1)), lut_range, lut_range - (2 ** n)
+                )
                 lut_type = RankedTensorType.get(
-                    (2**n,), IntegerType.get_signless(64, context=ctx)
+                    (2 ** n,), IntegerType.get_signless(64, context=ctx)
                 )
                 lut_attr = DenseElementsAttr.get(lut_values, context=ctx)
                 # ConstantOp is being decorated, and the init function is supposed to take more
@@ -555,15 +574,28 @@ class GraphConverter:
                 # pylint: enable=too-many-function-args
                 resulting_type = NodeConverter.value_to_mlir_type(ctx, input_value)
                 if input_value.is_scalar:
-                    sanitized = fhe.ApplyLookupTableEintOp(resulting_type, arg, lut).result
+                    sanitized = fhe.ApplyLookupTableEintOp(
+                        resulting_type, arg, lut
+                    ).result
                 else:
-                    sanitized = fhelinalg.ApplyLookupTableEintOp(resulting_type, arg, lut).result
+                    sanitized = fhelinalg.ApplyLookupTableEintOp(
+                        resulting_type, arg, lut
+                    ).result
 
                 sanitized_args.append(sanitized)
             else:
                 sanitized_args.append(arg)
 
         return sanitized_args
+
+    @staticmethod
+    def foo(graph: Graph) -> bool:
+        GraphConverter._update_bit_widths(graph)
+        try:
+            GraphConverter._check_graph_convertibility(graph)
+        except RuntimeError:
+            return False
+        return True
 
     @staticmethod
     def convert(graph: Graph, virtual: bool = False) -> str:
@@ -583,13 +615,14 @@ class GraphConverter:
         """
 
         graph = deepcopy(graph)
-        rewrite_all_binops(graph)
-        print(graph.format())
+        rewrite_all_binops(graph, GraphConverter.foo)
         GraphConverter._check_graph_convertibility(graph)
         if virtual:
             return "Virtual circuits don't have MLIR."
 
         GraphConverter._update_bit_widths(graph)
+        print("-----")
+        print(graph.format())
         GraphConverter._offset_negative_lookup_table_inputs(graph)
         GraphConverter._broadcast_assignments(graph)
         GraphConverter._encrypt_clear_assignments(graph)
@@ -609,7 +642,9 @@ class GraphConverter:
 
                 @func.FuncOp.from_py_func(*parameters)
                 def main(*args):
-                    sanitized_args = GraphConverter._sanitize_signed_inputs(graph, args, ctx)
+                    sanitized_args = GraphConverter._sanitize_signed_inputs(
+                        graph, args, ctx
+                    )
 
                     ir_to_mlir = {}
                     for arg_num, node in graph.input_nodes.items():
@@ -620,7 +655,9 @@ class GraphConverter:
                         if node.operation == Operation.Input:
                             continue
 
-                        preds = [ir_to_mlir[pred] for pred in graph.ordered_preds_of(node)]
+                        preds = [
+                            ir_to_mlir[pred] for pred in graph.ordered_preds_of(node)
+                        ]
                         node_converter = NodeConverter(
                             ctx,
                             graph,
@@ -631,13 +668,18 @@ class GraphConverter:
                         )
                         ir_to_mlir[node] = node_converter.convert()
 
-                    results = (ir_to_mlir[output_node] for output_node in graph.ordered_outputs())
+                    results = (
+                        ir_to_mlir[output_node]
+                        for output_node in graph.ordered_outputs()
+                    )
                     return results
 
         direct_replacements = {}
         for placeholder, elements in from_elements_operations.items():
             element_names = [NodeConverter.mlir_name(element) for element in elements]
-            actual_value = f"tensor.from_elements {', '.join(element_names)} : {placeholder.type}"
+            actual_value = (
+                f"tensor.from_elements {', '.join(element_names)} : {placeholder.type}"
+            )
             direct_replacements[NodeConverter.mlir_name(placeholder)] = actual_value
 
         module_lines_after_hacks_are_applied = []
@@ -648,6 +690,8 @@ class GraphConverter:
                 continue
 
             new_value = direct_replacements[mlir_name]
-            module_lines_after_hacks_are_applied.append(f"    {mlir_name} = {new_value}")
+            module_lines_after_hacks_are_applied.append(
+                f"    {mlir_name} = {new_value}"
+            )
 
         return "\n".join(module_lines_after_hacks_are_applied).strip()

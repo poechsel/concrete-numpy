@@ -71,7 +71,9 @@ class Graph:
                 nodes and their values during computation
         """
 
-        node_results: Dict[Node, Union[np.bool_, np.integer, np.floating, np.ndarray]] = {}
+        node_results: Dict[
+            Node, Union[np.bool_, np.integer, np.floating, np.ndarray]
+        ] = {}
         for node in nx.topological_sort(self.graph):
             if node.operation == Operation.Input:
                 node_results[node] = node(args[self.input_indices[node]])
@@ -83,7 +85,9 @@ class Graph:
             except Exception as error:
                 raise RuntimeError(
                     "Evaluation of the graph failed\n\n"
-                    + self.format(highlighted_nodes={node: ["evaluation of this node failed"]})
+                    + self.format(
+                        highlighted_nodes={node: ["evaluation of this node failed"]}
+                    )
                 ) from error
 
         return node_results
@@ -158,7 +162,10 @@ class Graph:
             lines.append(line)
 
             # if exists, save the subgraph
-            if node.operation == Operation.Generic and "subgraph" in node.properties["kwargs"]:
+            if (
+                node.operation == Operation.Generic
+                and "subgraph" in node.properties["kwargs"]
+            ):
                 subgraphs[line] = node.properties["kwargs"]["subgraph"]
 
             # remember type information of the node
@@ -176,7 +183,9 @@ class Graph:
         # %10 = ...
         # %11 = ...
         # ...
-        longest_length_before_equals_sign = max(len(line.split("=")[0]) for line in lines)
+        longest_length_before_equals_sign = max(
+            len(line.split("=")[0]) for line in lines
+        )
         for i, line in enumerate(lines):
             length_before_equals_sign = len(line.split("=")[0])
             lines[i] = (
@@ -202,7 +211,9 @@ class Graph:
         returns: List[str] = []
         for node in self.output_nodes.values():
             returns.append(f"%{id_map[node]}")
-        lines.append("return " + (returns[0] if len(returns) == 1 else f"({', '.join(returns)})"))
+        lines.append(
+            "return " + (returns[0] if len(returns) == 1 else f"({', '.join(returns)})")
+        )
 
         # format subgraphs after the actual graph
         result = "\n".join(lines)
@@ -283,11 +294,15 @@ class Graph:
                     }
 
         except Exception as error:
-            raise RuntimeError(f"Bound measurement using inputset[{index}] failed") from error
+            raise RuntimeError(
+                f"Bound measurement using inputset[{index}] failed"
+            ) from error
 
         return bounds
 
-    def update_with_bounds(self, bounds: Dict[Node, Dict[str, Union[np.integer, np.floating]]]):
+    def update_with_bounds(
+        self, bounds: Dict[Node, Dict[str, Union[np.integer, np.floating]]]
+    ):
         """
         Update `Value`s within the `Graph` according to measured bounds.
 
@@ -304,7 +319,9 @@ class Graph:
                 new_value = deepcopy(node.output)
 
                 if isinstance(min_bound, np.integer):
-                    new_value.dtype = Integer.that_can_represent(np.array([min_bound, max_bound]))
+                    new_value.dtype = Integer.that_can_represent(
+                        np.array([min_bound, max_bound])
+                    )
                 else:
                     new_value.dtype = {
                         np.bool_: UnsignedInteger(1),
@@ -399,11 +416,15 @@ class Graph:
 
             next_nodes: Dict[Node, None] = {}
             for node in current_nodes:
-                next_nodes.update({node: None for node in self.graph.predecessors(node)})
+                next_nodes.update(
+                    {node: None for node in self.graph.predecessors(node)}
+                )
 
             current_nodes = next_nodes
 
-        useless_nodes = [node for node in self.graph.nodes() if node not in useful_nodes]
+        useless_nodes = [
+            node for node in self.graph.nodes() if node not in useful_nodes
+        ]
         self.graph.remove_nodes_from(useless_nodes)
 
     def maximum_integer_bit_width(self) -> int:
@@ -422,6 +443,7 @@ class Graph:
         return result
 
     def expand_node(self, node: Node, sub_graph: "Graph"):
+        print(sub_graph.format())
         assert len(sub_graph.output_nodes) == 1
         assert len(sub_graph.input_nodes) == len(node.inputs)
         print(sub_graph.output_nodes[0].output.dtype, node.output.dtype)
@@ -446,7 +468,9 @@ class Graph:
                 edge_data = sub_graph.graph.get_edge_data(input_node_in_sub_graph, succ)
 
                 for data in edge_data.values():
-                    composed.add_edge(preds[input_key], succ, input_idx=data["input_idx"])
+                    composed.add_edge(
+                        preds[input_key], succ, input_idx=data["input_idx"]
+                    )
 
         for succ in succs:
             edge_data = self.graph.get_edge_data(node, succ)

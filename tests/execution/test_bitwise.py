@@ -2,7 +2,6 @@
 Tests of execution of add operation.
 """
 
-import numpy as np
 import pytest
 
 import concrete.numpy as cnp
@@ -26,9 +25,9 @@ import concrete.numpy as cnp
         },
     ],
 )
-def test_bitwise_or(function, parameters, helpers):
+def _test_bitwise_or(function, parameters, helpers):
     """
-    Test add where both of the operators are dynamic.
+    Test bitwise_or where both of the operators are dynamic.
     """
 
     parameter_encryption_statuses = helpers.generate_encryption_statuses(parameters)
@@ -63,7 +62,7 @@ def test_bitwise_or(function, parameters, helpers):
 )
 def test_bitwise_and(function, parameters, helpers):
     """
-    Test add where both of the operators are dynamic.
+    Test bitwise_and where both of the operators are dynamic.
     """
 
     parameter_encryption_statuses = helpers.generate_encryption_statuses(parameters)
@@ -76,6 +75,17 @@ def test_bitwise_and(function, parameters, helpers):
 
     sample = helpers.generate_sample(parameters)
     helpers.check_execution(circuit, function, sample)
+
+
+def _test_bitwise_and_pattern():
+    """
+    Test add where both of the operators are dynamic.
+    """
+    print(dir(cnp.mlir))
+    width = 10
+    for x in range(1 << width):
+        for y in range(1 << width):
+            assert cnp.mlir.node_rewriter.bitwise_and(width, x, y) == x & y
 
 
 @pytest.mark.parametrize(
@@ -96,9 +106,9 @@ def test_bitwise_and(function, parameters, helpers):
         },
     ],
 )
-def test_bitwise_xor(function, parameters, helpers):
+def _test_bitwise_xor(function, parameters, helpers):
     """
-    Test add where both of the operators are dynamic.
+    Test bitwise_xor where both of the operators are dynamic.
     """
 
     parameter_encryption_statuses = helpers.generate_encryption_statuses(parameters)
@@ -130,9 +140,9 @@ def test_bitwise_xor(function, parameters, helpers):
         },
     ],
 )
-def test_bitwise_not(function, parameters, helpers):
+def _test_bitwise_not(function, parameters, helpers):
     """
-    Test add where both of the operators are dynamic.
+    Test bitwise_not where the operator is dynamic.
     """
 
     parameter_encryption_statuses = helpers.generate_encryption_statuses(parameters)

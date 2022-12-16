@@ -7,3 +7,4 @@ from .ones import one, ones
 from .table import LookupTable
 from .univariate import univariate
 from .zeros import zero, zeros
+from .known_width import known_width

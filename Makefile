@@ -85,8 +85,11 @@ pcc_internal: $(PCC_DEPS)
 .PHONY: pytest # Run pytest
 pytest:
 	poetry run pytest -s  \
-	 tests/execution/test_comparisons.py
-	 #tests/execution/test_iter.py 
+	tests/execution/test_bitwise.py
+	
+	#tests/execution/test_comparisons.py
+	
+	 # tests/execution/test_iter.py 
 
 # Not a huge fan of ignoring missing imports, but some packages do not have typing stubs
 .PHONY: mypy # Run mypy
